@@ -1,57 +1,13 @@
-version: 2
-jobs:
-  test:
-    working_directory: ~/app
-    docker:
-      - image: circleci/node:latest
-    steps:
-      - checkout
-      - run:
-          name: Update npm
-          command: 'sudo npm install -g npm@latest'
-      - restore_cache:
-          key: dependency-cache-{{ checksum "package.json" }}
-      - run:
-          name: Install npm dependencies
-          command: npm install
-      - save_cache:
-          key: dependency-cache-{{ checksum "package.json" }}
-          paths:
-            - ./node_modules
-      - run:
-          name: Run tests
-          command: 'npm run test'
-  docker-deploy-image:
-    working_directory: ~/app
-    machine:
-      docker_layer_caching: true
-   # steps:
-   #   - checkout
-   #   - run: |
-   #       docker build -t andrewbestbier/ci-comparison-blog .     
-   #       docker login -u $DOCKER_USER -p $DOCKER_PASS
-   #       docker push andrewbestbier/ci-comparison-blog
-  deploy-aws:
-    working_directory: ~/app
-    docker:
-      - image: circleci/python:latest
-    steps:
-      - checkout
-      - run:
-          name: Installing deployment dependencies
-          working_directory: /
-          command: 'sudo pip install awsebcli --upgrade'
-      - run:
-          name: Deploying application to Elastic Beanstalk
-          command: eb deploy
+# Use the latest 2.1 version of CircleCI pipeline process engine. See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
+# Use a package of configuration called an orb.
+orbs:
+  # Declare a dependency on the welcome-orb
+  welcome: circleci/welcome-orb@0.4.1
+# Orchestrate or schedule a set of jobs
 workflows:
-  version: 2
-  build-test-and-deploy:
+  # Name the workflow "welcome"
+  welcome:
+    # Run the welcome/run job in its own container
     jobs:
-      - test
-      - docker-deploy-image:
-          requires:
-            - test
-      - deploy-aws:
-          requires:
-            - docker-deploy-image
+      - welcome/run
