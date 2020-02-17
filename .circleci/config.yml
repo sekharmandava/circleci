@@ -1,19 +1,57 @@
-version: 2.1
-orbs:
-  aws-ecr: circleci/aws-ecr@0.0.10
-  aws-ecs: circleci/aws-ecs@0.0.8
+version: 2
+jobs:
+  test:
+    working_directory: ~/app
+    docker:
+      - image: circleci/node:latest
+    steps:
+      - checkout
+      - run:
+          name: Update npm
+          command: 'sudo npm install -g npm@latest'
+      - restore_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+      - run:
+          name: Install npm dependencies
+          command: npm install
+      - save_cache:
+          key: dependency-cache-{{ checksum "package.json" }}
+          paths:
+            - ./node_modules
+      - run:
+          name: Run tests
+          command: 'npm run test'
+  docker-deploy-image:
+    working_directory: ~/app
+    machine:
+      docker_layer_caching: true
+   # steps:
+   #   - checkout
+   #   - run: |
+   #       docker build -t andrewbestbier/ci-comparison-blog .     
+   #       docker login -u $DOCKER_USER -p $DOCKER_PASS
+   #       docker push andrewbestbier/ci-comparison-blog
+  deploy-aws:
+    working_directory: ~/app
+    docker:
+      - image: circleci/python:latest
+    steps:
+      - checkout
+      - run:
+          name: Installing deployment dependencies
+          working_directory: /
+          command: 'sudo pip install awsebcli --upgrade'
+      - run:
+          name: Deploying application to Elastic Beanstalk
+          command: eb deploy
 workflows:
-  build-and-deploy:
+  version: 2
+  build-test-and-deploy:
     jobs:
-      - aws-ecr/build_and_push_image:
-          account-url: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
-          repo: "test"
-          region: ${AWS_DEFAULT_REGION}
-          tag: "${CIRCLE_SHA1}"
-      - aws-ecs/deploy-service-update:
+      - test
+      - docker-deploy-image:
           requires:
-            - aws-ecr/build_and_push_image
-          aws-region: ${AWS_DEFAULT_REGION}
-          family: "${AWS_RESOURCE_NAME_PREFIX}-service"
-          cluster-name: "${AWS_RESOURCE_NAME_PREFIX}-cluster"
-          container-image-name-updates: "container=${AWS_RESOURCE_NAME_PREFIX}-service,tag=${CIRCLE_SHA1}"
+            - test
+      - deploy-aws:
+          requires:
+            - docker-deploy-image
