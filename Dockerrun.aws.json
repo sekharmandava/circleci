@@ -1,7 +1,7 @@
 {
   "AWSEBDockerrunVersion": "1",
   "Image": {
-    "Name": "854912821377.dkr.ecr.us-east-1.amazonaws.com/qwerty:latest",
+    "Name": "854912821377.dkr.ecr.us-east-1.amazonaws.com/frist-repo:latest",
     "Update": "true"
   },
   "Ports": [
